@@ -21,9 +21,9 @@ st.set_page_config(
 apply_terminal_theme()
 
 # --- SIDEBAR & SETUP ---
-st.sidebar.markdown("### TERMINAL_CONTROL")
+st.sidebar.markdown("### TERMINAL CONTROL")
 tickers = st.sidebar.multiselect(
-    "ACTIVE_WATCHLIST",
+    "ACTIVE WATCHLIST",
     ["SLS", "^IXIC", "^FTSE", "AAPL", "MSFT", "NVDA", "TSLA", "GOOGL", "AMZN", "AMD", "META"],
     default=["SLS", "^IXIC", "^FTSE"]
 )
@@ -40,7 +40,7 @@ def get_ai_insight(ticker, stats, tech, adv, news):
     Data Provided:
     - Fundamentals: {json.dumps(stats)}
     - Quantitative Health: {json.dumps(adv)}
-    - Recent Price/Technical Summary (Last Close): {tech.iloc[-1].to_json()}
+    - Recent Price/Technical Summary (Last Close): {tech.iloc[-1].to_json() if not tech.empty else 'N/A'}
     - Recent News: {json.dumps(news[:3])}
     
     Task:
@@ -59,14 +59,14 @@ def get_ai_insight(ticker, stats, tech, adv, news):
         response = requests.post(url, json=payload)
         return response.json()['candidates'][0]['content']['parts'][0]['text']
     except:
-        return "ANALYTICS_OFFLINE: CHECK_API_KEY"
+        return "ANALYTICS OFFLINE: CHECK API KEY"
 
 # --- MAIN DASHBOARD ---
-view_option = st.sidebar.selectbox("VIEW_PORT", ["MACRO_OVERVIEW"] + tickers)
+view_option = st.sidebar.selectbox("VIEW PORT", ["MACRO OVERVIEW"] + tickers)
 
-if view_option == "MACRO_OVERVIEW":
-    st.header("GLOBAL_MARKET_MONITOR")
-    with st.spinner("SYNCING_MACRO_DATA"):
+if view_option == "MACRO OVERVIEW":
+    st.header("GLOBAL MARKET MONITOR")
+    with st.spinner("SYNCING MACRO DATA..."):
         macro_df = get_macro_data()
     
     if not macro_df.empty:
@@ -79,21 +79,29 @@ if view_option == "MACRO_OVERVIEW":
     
     col_a, col_b = st.columns(2)
     with col_a:
-        st.subheader("SECTOR_STRENGTH_INDEX")
+        st.subheader("SECTOR STRENGTH INDEX")
         # Real sector data logic could go here
         sectors = {"XLK": 1.2, "XLY": 0.8, "XLV": 0.3, "XLF": -0.4, "XLE": -1.1}
         fig = go.Figure(go.Bar(x=list(sectors.keys()), y=list(sectors.values()), marker_color=['#3fb950' if v > 0 else '#f85149' for v in sectors.values()]))
-        fig.update_layout(template="plotly_dark", paper_bgcolor="#0d1117", plot_bgcolor="#0d1117", height=250, margin=dict(l=0,r=0,t=20,b=0))
+        fig.update_layout(
+            template="plotly_dark", 
+            paper_bgcolor="#0d1117", 
+            plot_bgcolor="#0d1117", 
+            height=300, 
+            margin=dict(l=40, r=20, t=30, b=40),
+            xaxis_title="Sector ETF",
+            yaxis_title="Daily Change (%)"
+        )
         st.plotly_chart(fig, use_container_width=True)
     with col_b:
-        st.subheader("MARKET_SENTIMENT_QUICK_READ")
+        st.subheader("MARKET SENTIMENT QUICK READ")
         st.info("Institutional appetite remains focused on high-margin tech despite macro headwinds in energy. VIX suggests low-complacency risk premium.")
 
 else:
     ticker = view_option
-    st.header(f"TICKER_TERMINAL: {ticker}")
+    st.header(f"TICKER TERMINAL: {ticker}")
     
-    with st.spinner(f"PROCESSING_{ticker}_INTEL"):
+    with st.spinner(f"PROCESSING {ticker} INTEL..."):
         stock_info = get_stock_data(ticker)
         tech_data = get_technical_analysis(ticker)
         adv_stats = get_advanced_stats(ticker)
@@ -101,59 +109,74 @@ else:
         earnings = get_earnings_history(ticker)
         
     if tech_data.empty:
-        st.error(f"SYNC_FAILED: {ticker}")
+        st.error(f"SYNC FAILED: {ticker}")
         st.stop()
 
     # 1. Advanced Technical Chart
-    st.subheader("TECHNICAL_PRICE_ACTION_OSCILLATORS")
+    st.subheader("TECHNICAL PRICE ACTION & MOMENTUM")
     fig = make_subplots(rows=3, cols=1, shared_xaxes=True, vertical_spacing=0.05, row_heights=[0.6, 0.2, 0.2])
     
     # Candle + SMAs
     fig.add_trace(go.Candlestick(x=tech_data.index, open=tech_data['Open'], high=tech_data['High'], low=tech_data['Low'], close=tech_data['Close'], name="Price"), row=1, col=1)
-    fig.add_trace(go.Scatter(x=tech_data.index, y=tech_data['SMA_50'], name="SMA 50", line=dict(color='#58a6ff', width=1)), row=1, col=1)
-    fig.add_trace(go.Scatter(x=tech_data.index, y=tech_data['SMA_200'], name="SMA 200", line=dict(color='#d29922', width=1)), row=1, col=1)
+    fig.add_trace(go.Scatter(x=tech_data.index, y=tech_data['SMA_50'], name="SMA 50", line=dict(color='#58a6ff', width=1.5)), row=1, col=1)
+    fig.add_trace(go.Scatter(x=tech_data.index, y=tech_data['SMA_200'], name="SMA 200", line=dict(color='#d29922', width=1.5)), row=1, col=1)
+    fig.update_yaxes(title_text="Price (USD)", row=1, col=1)
     
     # RSI
-    fig.add_trace(go.Scatter(x=tech_data.index, y=tech_data['RSI'], name="RSI", line=dict(color='#bc8cff', width=1)), row=2, col=1)
-    fig.add_hline(y=70, line_dash="dot", line_color="#f85149", row=2, col=1)
-    fig.add_hline(y=30, line_dash="dot", line_color="#3fb950", row=2, col=1)
+    fig.add_trace(go.Scatter(x=tech_data.index, y=tech_data['RSI'], name="RSI", line=dict(color='#bc8cff', width=1.5)), row=2, col=1)
+    fig.add_hline(y=70, line_dash="dot", line_color="#f85149", row=2, col=1, annotation_text="Overbought")
+    fig.add_hline(y=30, line_dash="dot", line_color="#3fb950", row=2, col=1, annotation_text="Oversold")
+    fig.update_yaxes(title_text="RSI", row=2, col=1, range=[0, 100])
     
     # MACD
-    fig.add_trace(go.Scatter(x=tech_data.index, y=tech_data['MACD'], name="MACD", line=dict(color='#58a6ff', width=1)), row=3, col=1)
-    fig.add_trace(go.Scatter(x=tech_data.index, y=tech_data['Signal'], name="Signal", line=dict(color='#d29922', width=1)), row=3, col=1)
+    fig.add_trace(go.Scatter(x=tech_data.index, y=tech_data['MACD'], name="MACD", line=dict(color='#58a6ff', width=1.5)), row=3, col=1)
+    fig.add_trace(go.Scatter(x=tech_data.index, y=tech_data['Signal'], name="Signal", line=dict(color='#d29922', width=1.5)), row=3, col=1)
+    fig.update_yaxes(title_text="MACD", row=3, col=1)
+    fig.update_xaxes(title_text="Date", row=3, col=1)
     
-    fig.update_layout(template="plotly_dark", xaxis_rangeslider_visible=False, height=700, paper_bgcolor="#0d1117", plot_bgcolor="#0d1117", showlegend=False, margin=dict(l=10,r=10,t=10,b=10))
+    fig.update_layout(template="plotly_dark", xaxis_rangeslider_visible=False, height=800, paper_bgcolor="#0d1117", plot_bgcolor="#0d1117", showlegend=True, margin=dict(l=60, r=40, t=20, b=60))
     st.plotly_chart(fig, use_container_width=True)
     
     # 2. Key Stats & Quant Health
-    st.subheader("QUANTITATIVE_FUNDAMENTAL_HEALTH")
+    st.subheader("QUANTITATIVE & FUNDAMENTAL HEALTH")
     c1, c2, c3, c4 = st.columns(4)
     stats = stock_info.get('stats', {})
-    with c1: styled_metric("LAST_CLOSE", f"${tech_data['Close'].iloc[-1]:.2f}")
-    with c2: styled_metric("F-SCORE_RANK", f"{adv_stats['health_score']}/3", "+TREND" if adv_stats['health_score']=="N/A" or adv_stats['health_score'] > 1 else "-RISK")
-    with c3: styled_metric("TARGET_EST", f"${adv_stats['target_mean']:.2f}")
-    with c4: styled_metric("SHORT_RATIO", f"{adv_stats['short_ratio']:.1f}")
+    with c1: styled_metric("LAST CLOSE", f"${tech_data['Close'].iloc[-1]:.2f}")
+    with c2: styled_metric("F-SCORE RANK", f"{adv_stats['health_score']}/3", "TREND" if str(adv_stats['health_score']) == "N/A" or adv_stats['health_score'] > 1 else "RISK")
+    with c3: styled_metric("MEAN TARGET", f"${adv_stats['target_mean']:.2f}")
+    with c4: styled_metric("SHORT RATIO", f"{adv_stats['short_ratio']:.1f}")
 
     # 3. Institutional Flows & Earnings History
     col_x, col_y = st.columns([1, 1])
     with col_x:
-        st.subheader("INSTITUTIONAL_HOLDERS_13F")
+        st.subheader("INSTITUTIONAL HOLDERS (13F)")
         inst_data = stock_info.get('institutional', [])
         if inst_data: st.table(pd.DataFrame(inst_data))
-        else: st.warning("NO_WHALE_DATA_FOUND")
+        else: st.warning("NO WHALE DATA FOUND")
     with col_y:
-        st.subheader("EARNINGS_SURPRISE_TRACKER")
+        st.subheader("EARNINGS SURPRISE TRACKER")
         if earnings is not None and not earnings.empty:
             earning_fig = go.Figure()
-            earning_fig.add_trace(go.Bar(x=earnings.index, y=earnings['Reported EPS'], name='Actual', marker_color='#3fb950'))
-            earning_fig.add_trace(go.Bar(x=earnings.index, y=earnings['Estimated EPS'], name='Estimate', marker_color='#8b949e'))
-            earning_fig.update_layout(template="plotly_dark", barmode='group', height=300, paper_bgcolor="#0d1117", plot_bgcolor="#0d1117", margin=dict(l=0,r=0,t=30,b=0))
+            # Plot using standardized column names from utils.py
+            if 'Reported' in earnings.columns:
+                earning_fig.add_trace(go.Bar(x=earnings.index, y=earnings['Reported'], name='Actual', marker_color='#3fb950'))
+            if 'Estimate' in earnings.columns:
+                earning_fig.add_trace(go.Bar(x=earnings.index, y=earnings['Estimate'], name='Estimate', marker_color='#8b949e'))
+            
+            earning_fig.update_layout(
+                template="plotly_dark", barmode='group', height=400, 
+                paper_bgcolor="#0d1117", plot_bgcolor="#0d1117", 
+                margin=dict(l=40, r=20, t=40, b=40),
+                xaxis_title="Date Reported",
+                yaxis_title="EPS ($)",
+                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+            )
             st.plotly_chart(earning_fig, use_container_width=True)
         else:
-            st.info("EARNINGS_HISTORY_DATA_RESTRICTED")
+            st.info("EARNINGS HISTORY DATA RESTRICTED OR UNAVAILABLE")
 
     # 4. News Catalysts & Executive Analysis
-    st.subheader("MARKET_CATALYSTS_&_SENTIMENT_ENGINE")
+    st.subheader("MARKET CATALYSTS & SENTIMENT ENGINE")
     n_col, a_col = st.columns([1, 1.5])
     with n_col:
         if news:
@@ -161,7 +184,10 @@ else:
                 st.markdown(f"- **{item['source']}**: [{item['title']}]({item['url']})")
     with a_col:
         insight = get_ai_insight(ticker, stats, tech_data, adv_stats, news)
-        st.markdown(f'<div class="analysis-box"><strong>COPAW_SIGNAL_GENERATOR:</strong><br><br>{insight}</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="analysis-box"><strong>COPAW SIGNAL GENERATOR:</strong><br><br>{insight}</div>', unsafe_allow_html=True)
+
+st.sidebar.markdown("---")
+st.sidebar.caption("SYNC STAMP: " + datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
 
 st.sidebar.markdown("---")
 st.sidebar.caption("SYNC_STAMP: " + datetime.now().strftime("%H:%M:%S"))
