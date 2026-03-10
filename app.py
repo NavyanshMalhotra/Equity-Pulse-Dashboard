@@ -29,11 +29,15 @@ tickers = st.sidebar.multiselect(
 )
 
 # AI Insight API Setup
-load_dotenv('.env')
+# Priority: 1. Environment Variable, 2. .env file in local dir, 3. streamlit secrets
+load_dotenv() # Loads .env in the current directory (equity_dashboard/.env)
 API_KEY = os.getenv('GOOGLE_CLOUD_API_KEY') or st.secrets.get("GOOGLE_CLOUD_API_KEY")
 
 @st.cache_data(ttl=3600)
 def get_ai_insight(ticker, stats, tech, adv, news):
+    if not API_KEY:
+        return "CONFIG ERROR: API KEY NOT FOUND IN ENV OR .ENV"
+        
     prompt = f"""
     Perform a professional deep-dive analysis for {ticker}.
     
@@ -53,13 +57,15 @@ def get_ai_insight(ticker, stats, tech, adv, news):
     
     Tone: Institutional Analyst (Fact-based, No fluff, High impact).
     """
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key={API_KEY}"
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-pro-preview:generateContent?key={API_KEY}"
     payload = {"contents": [{"parts": [{"text": prompt}]}]}
     try:
-        response = requests.post(url, json=payload)
-        return response.json()['candidates'][0]['content']['parts'][0]['text']
-    except:
-        return "ANALYTICS OFFLINE: CHECK API KEY"
+        response = requests.post(url, json=payload, timeout=10)
+        response.raise_for_status()
+        res_json = response.json()
+        return res_json['candidates'][0]['content']['parts'][0]['text']
+    except Exception as e:
+        return f"ANALYTICS ERROR: {str(e)}"
 
 # --- MAIN DASHBOARD ---
 view_option = st.sidebar.selectbox("VIEW PORT", ["MACRO OVERVIEW"] + tickers)
