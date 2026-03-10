@@ -100,13 +100,25 @@ def get_technical_analysis(ticker_symbol):
 
 @st.cache_data(ttl=3600)
 def get_earnings_history(ticker_symbol):
-    """Fetches Earnings surprise data."""
+    """Fetches Earnings surprise data with robust column mapping."""
     try:
         stock = yf.Ticker(ticker_symbol)
         earnings = stock.earnings_dates
         if earnings is not None:
-            # Clean and return last 4-8 quarters
-            return earnings.dropna(subset=['Reported EPS', 'Surprise(%)']).head(8)
+            # Drop rows where we don't even have a reported or estimated value
+            earnings = earnings.dropna(subset=['Reported EPS', 'EPS Estimate'], how='all')
+            # Standardize columns for the app
+            col_map = {
+                'Reported EPS': 'Reported',
+                'EPS Estimate': 'Estimate',
+                'Surprise(%)': 'Surprise'
+            }
+            earnings = earnings.rename(columns=col_map)
+            # Ensure columns exist to prevent KeyErrors
+            for col in ['Reported', 'Estimate']:
+                if col not in earnings.columns:
+                    earnings[col] = 0
+            return earnings.head(8)
         return None
     except:
         return None
