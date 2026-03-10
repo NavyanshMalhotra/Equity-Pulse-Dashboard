@@ -1,6 +1,7 @@
 streamlit
 yfinance
 pandas
+numpy
 plotly
 duckduckgo_search
 python-dotenv
