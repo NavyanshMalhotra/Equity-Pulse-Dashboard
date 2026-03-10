@@ -116,11 +116,14 @@ else:
     st.subheader("TECHNICAL PRICE ACTION & MOMENTUM")
     fig = make_subplots(rows=3, cols=1, shared_xaxes=True, vertical_spacing=0.05, row_heights=[0.6, 0.2, 0.2])
     
+    currency = stock_info.get('stats', {}).get('Currency', 'USD')
+    y_label = "Points" if ticker.startswith("^") else f"Price ({currency})"
+
     # Candle + SMAs
     fig.add_trace(go.Candlestick(x=tech_data.index, open=tech_data['Open'], high=tech_data['High'], low=tech_data['Low'], close=tech_data['Close'], name="Price"), row=1, col=1)
     fig.add_trace(go.Scatter(x=tech_data.index, y=tech_data['SMA_50'], name="SMA 50", line=dict(color='#58a6ff', width=1.5)), row=1, col=1)
     fig.add_trace(go.Scatter(x=tech_data.index, y=tech_data['SMA_200'], name="SMA 200", line=dict(color='#d29922', width=1.5)), row=1, col=1)
-    fig.update_yaxes(title_text="Price (USD)", row=1, col=1)
+    fig.update_yaxes(title_text=y_label, row=1, col=1)
     
     # RSI
     fig.add_trace(go.Scatter(x=tech_data.index, y=tech_data['RSI'], name="RSI", line=dict(color='#bc8cff', width=1.5)), row=2, col=1)
@@ -141,9 +144,9 @@ else:
     st.subheader("QUANTITATIVE & FUNDAMENTAL HEALTH")
     c1, c2, c3, c4 = st.columns(4)
     stats = stock_info.get('stats', {})
-    with c1: styled_metric("LAST CLOSE", f"${tech_data['Close'].iloc[-1]:.2f}")
-    with c2: styled_metric("F-SCORE RANK", f"{adv_stats['health_score']}/3", "TREND" if str(adv_stats['health_score']) == "N/A" or adv_stats['health_score'] > 1 else "RISK")
-    with c3: styled_metric("MEAN TARGET", f"${adv_stats['target_mean']:.2f}")
+    with c1: styled_metric("LAST CLOSE", f"{tech_data['Close'].iloc[-1]:.2f} {currency}")
+    with c2: styled_metric("F-SCORE RANK", f"{adv_stats['health_score']}/3", "TREND" if str(adv_stats['health_score']) == "N/A" or (isinstance(adv_stats['health_score'], int) and adv_stats['health_score'] > 1) else "RISK")
+    with c3: styled_metric("MEAN TARGET", f"{adv_stats['target_mean']:.2f} {currency}")
     with c4: styled_metric("SHORT RATIO", f"{adv_stats['short_ratio']:.1f}")
 
     # 3. Institutional Flows & Earnings History
@@ -168,7 +171,7 @@ else:
                 paper_bgcolor="#0d1117", plot_bgcolor="#0d1117", 
                 margin=dict(l=40, r=20, t=40, b=40),
                 xaxis_title="Date Reported",
-                yaxis_title="EPS ($)",
+                yaxis_title=f"EPS ({currency})",
                 legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
             )
             st.plotly_chart(earning_fig, use_container_width=True)
@@ -187,10 +190,5 @@ else:
         st.markdown(f'<div class="analysis-box"><strong>COPAW SIGNAL GENERATOR:</strong><br><br>{insight}</div>', unsafe_allow_html=True)
 
 st.sidebar.markdown("---")
-st.sidebar.caption("SYNC STAMP: " + datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-
-st.sidebar.markdown("---")
-st.sidebar.caption("SYNC_STAMP: " + datetime.now().strftime("%H:%M:%S"))
-
-st.sidebar.markdown("---")
 st.sidebar.caption("SYNC_STAMP: " + datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+
