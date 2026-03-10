@@ -16,35 +16,65 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Dark Mode & Glow CSS
+# Dark Mode & High Contrast CSS
 st.markdown("""
 <style>
-    .reportview-container {
-        background: #0e1117;
+    /* Main Background & Text Contrast */
+    .stApp {
+        background-color: #0b0e14;
+        color: #e2e8f0;
     }
-    .main {
-        background: #0e1117;
-        color: #fafafa;
+    
+    /* Strong Headers */
+    h1, h2, h3 {
+        color: #ffffff !important;
+        font-weight: 800 !important;
+        letter-spacing: -0.5px;
     }
+
+    /* Metric Card Styling */
     .metric-card {
-        background: #1e2130;
-        border: 1px solid #3e4451;
-        border-radius: 10px;
-        padding: 20px;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
-        transition: transform 0.3s ease-in-out;
+        background: #161b22;
+        border: 1px solid #30363d;
+        border-radius: 12px;
+        padding: 24px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+        transition: transform 0.2s, box-shadow 0.2s;
     }
     .metric-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 6px 12px rgba(0, 255, 127, 0.2);
+        transform: translateY(-4px);
+        border-color: #58a6ff;
+        box-shadow: 0 8px 25px rgba(88, 166, 255, 0.15);
     }
+    
+    /* Text Visibility on Dark */
+    .stMarkdown p, .stMarkdown li {
+        color: #cbd5e0 !important;
+        font-size: 16px;
+        line-height: 1.6;
+    }
+    
     .glow-green {
-        color: #00ff7f;
-        text-shadow: 0 0 10px rgba(0, 255, 127, 0.5);
+        color: #00ff87 !important;
+        font-weight: bold;
+        text-shadow: 0 0 12px rgba(0, 255, 135, 0.3);
     }
     .glow-red {
-        color: #ff4b4b;
-        text-shadow: 0 0 10px rgba(255, 75, 75, 0.5);
+        color: #ff4d4d !important;
+        font-weight: bold;
+        text-shadow: 0 0 12px rgba(255, 77, 77, 0.3);
+    }
+
+    /* Sidebar Styling */
+    .css-1d391kg {
+        background-color: #0d1117;
+    }
+    
+    /* Table Styling */
+    div[data-testid="stTable"] {
+        background-color: #161b22;
+        border-radius: 10px;
+        border: 1px solid #30363d;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -174,9 +204,10 @@ for i, ticker in enumerate(tickers):
         st.subheader("🐳 Institutional Whale Radar")
         if stock_info['institutional']:
             inst_df = pd.DataFrame(stock_info['institutional'])
-            st.table(inst_df[['Holder', 'Shares', '% Out']])
+            # We already standardized the columns in utils.py
+            st.table(inst_df)
         else:
-            st.warning("Institutional data currently processing or unavailable for this ticker.")
+            st.warning("Institutional data (13F) is currently unavailable or being processed for this ticker.")
             
         # 4. Breaking News
         st.subheader("🗞️ Breaking News & Catalysts")
