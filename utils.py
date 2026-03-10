@@ -46,14 +46,30 @@ def get_stock_data(ticker_symbol):
     # Key Dates
     calendar = stock.calendar
     
-    # Institutional Holders
+    # Institutional Holders - Handle Column Name Variations
     try:
         institutional = stock.institutional_holders
         if institutional is not None:
-            institutional = institutional.head(5).to_dict('records')
+            # Standardize columns to [Holder, Shares, % Out]
+            # Mapping common variations from yfinance
+            col_map = {
+                'Holder': 'Holder',
+                'Entity': 'Holder',
+                'Shares': 'Shares',
+                'Date Reported': 'Date',
+                '% Out': '% Out',
+                'Value': 'Value'
+            }
+            institutional = institutional.rename(columns=col_map)
+            # Ensure the required columns exist
+            for col in ['Holder', 'Shares', '% Out']:
+                if col not in institutional.columns:
+                    institutional[col] = "N/A"
+            institutional = institutional[['Holder', 'Shares', '% Out']].head(10).to_dict('records')
         else:
             institutional = []
-    except:
+    except Exception as e:
+        print(f"Institutional Data Error: {e}")
         institutional = []
         
     return {
