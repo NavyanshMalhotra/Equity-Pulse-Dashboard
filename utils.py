@@ -138,7 +138,8 @@ def get_stock_data(ticker_symbol):
             "52W High": info.get("fiftyTwoWeekHigh"),
             "52W Low": info.get("fiftyTwoWeekLow"),
             "Volume": info.get("volume"),
-            "Avg Volume": info.get("averageVolume")
+            "Avg Volume": info.get("averageVolume"),
+            "Currency": info.get("currency", "USD")
         }
         
         # Institutional Holders
