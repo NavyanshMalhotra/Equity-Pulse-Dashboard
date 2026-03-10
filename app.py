@@ -93,14 +93,15 @@ def styled_metric(label, value, delta=None):
 st.sidebar.title("🚀 Equity Control")
 tickers = st.sidebar.multiselect(
     "Select Equities to Track",
-    ["AAPL", "MSFT", "NVDA", "TSLA", "GOOGL", "AMZN", "AMD", "META"],
-    default=["AAPL", "MSFT", "NVDA"]
+    ["SLS", "^IXIC", "^FTSE", "AAPL", "MSFT", "NVDA", "TSLA", "GOOGL", "AMZN", "AMD", "META"],
+    default=["SLS", "^IXIC", "^FTSE"]
 )
 
-# AI Insight API Setup (Simplified for the demo - assuming access to Gemini via direct API)
+# AI Insight API Setup
 load_dotenv('.env')
-API_KEY = os.getenv('GOOGLE_CLOUD_API_KEY')
+API_KEY = os.getenv('GOOGLE_CLOUD_API_KEY') or st.secrets.get("GOOGLE_CLOUD_API_KEY")
 
+@st.cache_data(ttl=3600)
 def get_ai_insight(ticker, data, news):
     """Generates factual, insightful AI analysis."""
     prompt = f"""
@@ -123,102 +124,99 @@ def get_ai_insight(ticker, data, news):
         return "Insight generation currently unavailable. Check market data for trends."
 
 # --- MAIN DASHBOARD ---
-tabs = st.tabs(["🏠 Macro Overview"] + tickers)
+# Use a selectbox for true lazy loading to prevent YFRateLimitError
+view_option = st.sidebar.selectbox("Navigate To:", ["🏠 Macro Overview"] + tickers)
 
-with tabs[0]:
+if view_option == "🏠 Macro Overview":
     st.title("🌍 Global Macro & Sector Pulse")
     
     # Macro Indicators Row
-    macro_df = get_macro_data()
-    cols = st.columns(len(macro_df))
-    for i, row in macro_df.iterrows():
-        with cols[i]:
-            styled_metric(row['Name'], f"{row['Price']:,.2f}", f"{row['Change']:+.2f}%")
+    with st.spinner("Fetching macro data..."):
+        macro_df = get_macro_data()
+    
+    if not macro_df.empty:
+        cols = st.columns(len(macro_df))
+        for i, row in macro_df.iterrows():
+            with cols[i]:
+                styled_metric(row['Name'], f"{row['Price']:,.2f}", f"{row['Change']:+.2f}%")
+    else:
+        st.error("Macro data currently unavailable due to rate limits. Please try again in a few minutes.")
     
     st.divider()
     
     # Micro Industry Analysis
     st.subheader("📊 Industry Breakdown (Micro View)")
-    # Placeholder for sector heatmap or detailed industry metrics
     st.info("Sectors like Semiconductors and AI Infrastructure are showing significant relative strength in the current market regime.")
     
-    # Interactive Sector Chart (S&P 500 Sectors)
-    sector_data = {
-        "Technology (XLK)": 1.2,
-        "Energy (XLE)": -0.8,
-        "Financials (XLF)": 0.5,
-        "Health Care (XLV)": 0.1,
-        "Consumer Disc (XLY)": 0.9
-    }
-    fig = go.Figure(go.Bar(
-        x=list(sector_data.keys()),
-        y=list(sector_data.values()),
-        marker_color=['#00ff7f' if v > 0 else '#ff4b4b' for v in sector_data.values()]
-    ))
+    # Interactive Sector Chart
+    sector_data = {"Technology (XLK)": 1.2, "Energy (XLE)": -0.8, "Financials (XLF)": 0.5, "Health Care (XLV)": 0.1, "Consumer Disc (XLY)": 0.9}
+    fig = go.Figure(go.Bar(x=list(sector_data.keys()), y=list(sector_data.values()), marker_color=['#00ff87' if v > 0 else '#ff4d4d' for v in sector_data.values()]))
     fig.update_layout(title="Daily Sector Performance (%)", template="plotly_dark")
     st.plotly_chart(fig, use_container_width=True)
 
-# Equity Tabs
-for i, ticker in enumerate(tickers):
-    with tabs[i+1]:
-        st.header(f"💼 {ticker} - Deep Dive")
+else:
+    ticker = view_option
+    st.header(f"💼 {ticker} - Deep Dive")
+    
+    # Data Fetching
+    with st.spinner(f"Aggregating {ticker} data..."):
+        stock_info = get_stock_data(ticker)
+        history = get_stock_history(ticker)
+        news = get_breaking_news(f"{ticker} stock news")
         
-        # Data Fetching
-        with st.spinner(f"Aggregating {ticker} data..."):
-            stock_info = get_stock_data(ticker)
-            history = get_stock_history(ticker)
-            news = get_breaking_news(f"{ticker} stock news")
-            
-        # 1. Price Chart (The Dopamine Centerpiece)
-        fig = go.Figure(data=[go.Candlestick(
-            x=history.index,
-            open=history['Open'],
-            high=history['High'],
-            low=history['Low'],
-            close=history['Close'],
-            name='Price'
-        )])
-        fig.update_layout(
-            title=f"{ticker} Price Action (1 Year)",
-            template="plotly_dark",
-            xaxis_rangeslider_visible=False,
-            height=500
-        )
-        st.plotly_chart(fig, use_container_width=True)
+    if "error" in stock_info or history.empty:
+        st.error(f"⚠️ Rate Limit or Data Error for {ticker}. Showing cached or partial data if available.")
+        if history.empty:
+            st.info("Yahoo Finance is currently limiting requests from this server. Please check back in a moment.")
+            st.stop()
+
+    # 1. Price Chart (The Dopamine Centerpiece)
+    fig = go.Figure(data=[go.Candlestick(
+        x=history.index, open=history['Open'], high=history['High'], low=history['Low'], close=history['Close'], name='Price'
+    )])
+    fig.update_layout(title=f"{ticker} Price Action (1 Year)", template="plotly_dark", xaxis_rangeslider_visible=False, height=500)
+    st.plotly_chart(fig, use_container_width=True)
+    
+    # 2. Key Stats & Upcoming Dates
+    st.subheader("📉 Technical & Fundamental Pulse")
+    col1, col2, col3, col4 = st.columns(4)
+    stats = stock_info.get('stats', {})
+    with col1: styled_metric("Price", f"${history['Close'].iloc[-1]:.2f}")
+    with col2: styled_metric("Volume", f"{stats.get('Volume', 0):,}")
+    with col3: 
+        mc = stats.get('Market Cap')
+        val = f"${mc/1e9:.2f}B" if mc else "N/A"
+        styled_metric("Market Cap", val)
+    with col4: 
+        earnings_date = "N/A"
+        cal = stock_info.get('calendar')
+        if cal is not None and 'Earnings Date' in cal:
+            earnings_date = cal['Earnings Date'][0].strftime('%Y-%m-%d')
+        styled_metric("Earnings Date", earnings_date)
         
-        # 2. Key Stats & Upcoming Dates
-        st.subheader("📉 Technical & Fundamental Pulse")
-        col1, col2, col3, col4 = st.columns(4)
-        stats = stock_info['stats']
-        with col1: styled_metric("Price", f"${history['Close'].iloc[-1]:.2f}")
-        with col2: styled_metric("Volume", f"{stats['Volume']:,}")
-        with col3: styled_metric("Market Cap", f"${stats['Market Cap']/1e9:.2f}B")
-        with col4: 
-            earnings_date = "N/A"
-            if stock_info['calendar'] is not None and 'Earnings Date' in stock_info['calendar']:
-                earnings_date = stock_info['calendar']['Earnings Date'][0].strftime('%Y-%m-%d')
-            styled_metric("Earnings Date", earnings_date)
-            
-        # 3. Whale & Institutional Radar
-        st.divider()
-        st.subheader("🐳 Institutional Whale Radar")
-        if stock_info['institutional']:
-            inst_df = pd.DataFrame(stock_info['institutional'])
-            # We already standardized the columns in utils.py
-            st.table(inst_df)
-        else:
-            st.warning("Institutional data (13F) is currently unavailable or being processed for this ticker.")
-            
-        # 4. Breaking News
-        st.subheader("🗞️ Breaking News & Catalysts")
+    # 3. Whale & Institutional Radar
+    st.divider()
+    st.subheader("🐳 Institutional Whale Radar")
+    inst_data = stock_info.get('institutional', [])
+    if inst_data:
+        inst_df = pd.DataFrame(inst_data)
+        st.table(inst_df)
+    else:
+        st.warning("Institutional data (13F) is currently unavailable or being processed for this ticker.")
+        
+    # 4. Breaking News
+    st.subheader("🗞️ Breaking News & Catalysts")
+    if news:
         for item in news:
             st.markdown(f"- **{item['source']}**: [{item['title']}]({item['url']}) ({item['date']})")
-            
-        # 5. AI Executive Insight
-        st.divider()
-        st.subheader("🧠 Copaw Executive Insight")
-        insight = get_ai_insight(ticker, stats, news)
-        st.markdown(f'<div style="background: #1e2130; padding: 20px; border-left: 5px solid #00ff7f; border-radius: 10px;">{insight}</div>', unsafe_allow_html=True)
+    else:
+        st.info("No recent news found or search limit reached.")
+        
+    # 5. AI Executive Insight
+    st.divider()
+    st.subheader("🧠 Copaw Executive Insight")
+    insight = get_ai_insight(ticker, stats, news)
+    st.markdown(f'<div style="background: #161b22; padding: 25px; border-left: 5px solid #00ff87; border-radius: 12px; border: 1px solid #30363d;">{insight}</div>', unsafe_allow_html=True)
 
 st.sidebar.markdown("---")
 st.sidebar.caption("Last Updated: " + datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
