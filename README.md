@@ -22,7 +22,7 @@ EQUITY_TERMINAL is a high-performance, data-dense analytical platform designed f
 *   **Quantitative Stats**: Mean price targets, short ratios, and beta monitoring.
 
 ### 4. **Copaw AI Signal Generator**
-*   **Executive Insights**: Powered by **Gemini 3.1 Pro**, providing 4 high-impact, factual bullet points analyzing sentiment, technical setups, and fundamental risks.
+*   **Executive Insights**: Powered by **Gemini Flash**, providing 4 high-impact, factual bullet points analyzing sentiment, technical setups, and fundamental risks.
 *   **Contextual News Feed**: Real-time news aggregation from professional financial sources.
 
 ## 🛠️ Technology Stack

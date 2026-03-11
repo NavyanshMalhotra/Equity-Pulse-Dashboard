@@ -36,7 +36,7 @@ API_KEY = os.getenv('GOOGLE_CLOUD_API_KEY') or st.secrets.get("GOOGLE_CLOUD_API_
 @st.cache_data(ttl=3600)
 def get_ai_insight(ticker, stats, tech, adv, news):
     if not API_KEY:
-        return "CONFIG ERROR: API KEY NOT FOUND"
+        return "CONFIG ERROR: GOOGLE_CLOUD_API_KEY NOT FOUND IN .ENV"
         
     # Standardize data for prompt
     try:
@@ -64,7 +64,10 @@ def get_ai_insight(ticker, stats, tech, adv, news):
     Tone: Institutional Analyst (Fact-based, No fluff, High impact).
     """
     
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key={API_KEY}"
+    # Using gemini-flash-latest as requested
+    model_id = "gemini-flash-latest"
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_id}:generateContent?key={API_KEY}"
+    
     payload = {
         "contents": [{
             "parts": [{"text": prompt}]
@@ -77,16 +80,24 @@ def get_ai_insight(ticker, stats, tech, adv, news):
         }
     }
     
-    # Debug message for UI (removable after verification)
-    # st.sidebar.info(f"Requesting Gemini {ticker}...")
-
     try:
         response = requests.post(url, json=payload, timeout=15)
+        
         if response.status_code == 404:
-             return "API ERROR: Model gemini-3.1-pro-preview not found or restricted."
+             return f"API ERROR: Model {model_id} not found. Check endpoint/model availability."
+        elif response.status_code == 403:
+             return "API ERROR: Invalid API Key or restricted access (403)."
+             
         response.raise_for_status()
         res_json = response.json()
-        return res_json['candidates'][0]['content']['parts'][0]['text']
+        
+        if 'candidates' in res_json and len(res_json['candidates']) > 0:
+            return res_json['candidates'][0]['content']['parts'][0]['text']
+        else:
+            return "API ERROR: No analytical candidates returned from Gemini."
+            
+    except requests.exceptions.RequestException as e:
+        return f"NETWORK ERROR: {str(e)}"
     except Exception as e:
         return f"ANALYTICS ERROR: {str(e)}"
 
