@@ -64,7 +64,7 @@ def get_ai_insight(ticker, stats, tech, adv, news):
     Tone: Institutional Analyst (Fact-based, No fluff, High impact).
     """
     
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={API_KEY}"
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key={API_KEY}"
     payload = {
         "contents": [{
             "parts": [{"text": prompt}]
