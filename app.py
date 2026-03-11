@@ -64,8 +64,18 @@ def get_ai_insight(ticker, stats, tech, adv, news):
     Tone: Institutional Analyst (Fact-based, No fluff, High impact).
     """
     
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-pro-preview:generateContent?key={API_KEY}"
-    payload = {"contents": [{"parts": [{"text": prompt}]}]}
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={API_KEY}"
+    payload = {
+        "contents": [{
+            "parts": [{"text": prompt}]
+        }],
+        "generationConfig": {
+            "temperature": 0.1,
+            "topP": 0.95,
+            "topK": 40,
+            "maxOutputTokens": 1024,
+        }
+    }
     
     # Debug message for UI (removable after verification)
     # st.sidebar.info(f"Requesting Gemini {ticker}...")
