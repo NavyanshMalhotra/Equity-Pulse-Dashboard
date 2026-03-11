@@ -36,15 +36,21 @@ API_KEY = os.getenv('GOOGLE_CLOUD_API_KEY') or st.secrets.get("GOOGLE_CLOUD_API_
 @st.cache_data(ttl=3600)
 def get_ai_insight(ticker, stats, tech, adv, news):
     if not API_KEY:
-        return "CONFIG ERROR: API KEY NOT FOUND IN ENV OR .ENV"
+        return "CONFIG ERROR: API KEY NOT FOUND"
         
+    # Standardize data for prompt
+    try:
+        tech_summary = tech.iloc[-1].to_json() if not tech.empty else 'N/A'
+    except:
+        tech_summary = 'N/A'
+
     prompt = f"""
     Perform a professional deep-dive analysis for {ticker}.
     
     Data Provided:
     - Fundamentals: {json.dumps(stats)}
     - Quantitative Health: {json.dumps(adv)}
-    - Recent Price/Technical Summary (Last Close): {tech.iloc[-1].to_json() if not tech.empty else 'N/A'}
+    - Recent Price/Technical Summary (Last Close): {tech_summary}
     - Recent News: {json.dumps(news[:3])}
     
     Task:
@@ -57,10 +63,17 @@ def get_ai_insight(ticker, stats, tech, adv, news):
     
     Tone: Institutional Analyst (Fact-based, No fluff, High impact).
     """
+    
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-pro-preview:generateContent?key={API_KEY}"
     payload = {"contents": [{"parts": [{"text": prompt}]}]}
+    
+    # Debug message for UI (removable after verification)
+    # st.sidebar.info(f"Requesting Gemini {ticker}...")
+
     try:
-        response = requests.post(url, json=payload, timeout=10)
+        response = requests.post(url, json=payload, timeout=15)
+        if response.status_code == 404:
+             return "API ERROR: Model gemini-3.1-pro-preview not found or restricted."
         response.raise_for_status()
         res_json = response.json()
         return res_json['candidates'][0]['content']['parts'][0]['text']
