@@ -69,8 +69,8 @@ class PulseIntelligence:
         if not self.api_key:
             return "ERROR: Critical Authentication Missing."
 
-        # Corrected Model ID: gemini-1.5-pro
-        model_id = "gemini-1.5-pro" 
+        # Corrected & Verified Model ID: gemini-pro-latest
+        model_id = "gemini-pro-latest" 
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_id}:generateContent?key={self.api_key}"
 
         prompt = f"""
