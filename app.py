@@ -21,9 +21,13 @@ st.set_page_config(
 # Apply Theme
 apply_terminal_theme()
 
-# Load Secrets
-load_dotenv()
-API_KEY = os.getenv('GOOGLE_CLOUD_API_KEY') or st.secrets.get("GOOGLE_CLOUD_API_KEY")
+# Load Secrets Securely
+# Do not store API keys in code or on client side.
+API_KEY = st.secrets.get("GOOGLE_CLOUD_API_KEY") if "GOOGLE_CLOUD_API_KEY" in st.secrets else os.getenv("GOOGLE_CLOUD_API_KEY")
+
+if not API_KEY:
+    st.error("SYSTEM_AUTHENTICATION_OFFLINE: Missing GOOGLE_CLOUD_API_KEY")
+    st.stop()
 
 # Initialize Intelligence Layer
 intel = PulseIntelligence(API_KEY)
