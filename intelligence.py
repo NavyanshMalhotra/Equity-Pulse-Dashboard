@@ -18,14 +18,12 @@ class PulseIntelligence:
         }
 
     def _sanitize_error(self, error_msg):
-        """Removes API keys from error messages using regex."""
         if not error_msg: return "Unknown Error"
-        # Mask common API key patterns (AIza...)
         sanitized = re.sub(r'AIza[0-9A-Za-z-_]{35}', '[REDACTED_KEY]', str(error_msg))
         return sanitized
 
     def get_whale_conviction(self, ticker_symbol):
-        """Analyzes 13F trends to determine institutional conviction."""
+        """Analyzes 13F trends and generates a high-speed Flash AI signal."""
         try:
             stock = yf.Ticker(ticker_symbol)
             inst = stock.institutional_holders
@@ -34,24 +32,44 @@ class PulseIntelligence:
             
             inst['Shares'] = pd.to_numeric(inst['Shares'], errors='coerce')
             inst = inst.dropna(subset=['Shares'])
-            
             total_shares = inst['Shares'].sum()
+            
             if total_shares == 0:
                 return {"score": 50, "status": "NEUTRAL", "signal": "Static Float"}
                 
             top_5_concentration = (inst['Shares'].head(5).sum() / total_shares) * 100
             
-            if top_5_concentration > 70:
-                return {"score": 85, "status": "HIGH", "signal": "Concentrated Accumulation"}
-            elif top_5_concentration > 40:
-                return {"score": 65, "status": "MODERATE", "signal": "Broad Institutional Support"}
-            else:
-                return {"score": 40, "status": "LOW", "signal": "Fragmented Ownership"}
+            # Use Flash for the signal interpretation to avoid rate limits
+            ai_signal = self._get_flash_interpretation(ticker_symbol, inst.head(10).to_json(), top_5_concentration)
+            
+            score = 50
+            if top_5_concentration > 70: score = 85
+            elif top_5_concentration > 40: score = 65
+            
+            return {"score": score, "status": "ACTIVE", "signal": ai_signal}
         except Exception as e:
-            return {"score": 50, "status": "NEUTRAL", "signal": f"Error: {self._sanitize_error(e)}"}
+            return {"score": 50, "status": "ERROR", "signal": f"Radar Offline: {self._sanitize_error(e)}"}
+
+    def _get_flash_interpretation(self, ticker, inst_json, concentration):
+        """Internal helper for high-speed Flash signals."""
+        model_id = "gemini-flash-latest"
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_id}:generateContent?key={self.api_key}"
+        
+        prompt = f"Analyze institutional concentration for {ticker}. Top 5 hold {concentration:.1f}% of institutional float. Data: {inst_json}. Provide a 1-sentence institutional signal."
+        
+        payload = {
+            "contents": [{"parts": [{"text": prompt}]}],
+            "generationConfig": {"temperature": 0.1, "maxOutputTokens": 100}
+        }
+        
+        try:
+            r = requests.post(url, json=payload, timeout=10)
+            r.raise_for_status()
+            return r.json()['candidates'][0]['content']['parts'][0]['text'].strip()
+        except:
+            return "Stable Institutional Holding"
 
     def get_correlations(self, ticker_symbol):
-        """Fetches relative performance of correlated peers."""
         peers = self.industry_maps.get(ticker_symbol, [])
         correlation_data = []
         for peer in peers:
@@ -65,11 +83,9 @@ class PulseIntelligence:
         return correlation_data
 
     def get_synthetic_report(self, ticker, stats, tech, adv, news):
-        """Multi-persona debate synthesis using Gemini 1.5 Pro."""
-        if not self.api_key:
-            return "ERROR: Critical Authentication Missing."
+        """Expanded Synthesis using Gemini Pro with higher token limit."""
+        if not self.api_key: return "AUTH_REQUIRED"
 
-        # Corrected & Verified Model ID: gemini-pro-latest
         model_id = "gemini-pro-latest" 
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_id}:generateContent?key={self.api_key}"
 
@@ -77,29 +93,27 @@ class PulseIntelligence:
         ACT AS AN INSTITUTIONAL INVESTMENT COMMITTEE.
         Perform a high-rigor 'Synthetic Debate' for {ticker}.
         
-        DATA CONTEXT:
-        - Stats: {json.dumps(stats)}
-        - Health: {json.dumps(adv)}
-        - News: {json.dumps(news[:5])}
+        DATA: Stats: {json.dumps(stats)}, Health: {json.dumps(adv)}, News: {json.dumps(news[:5])}
         
-        STRUCTURE:
-        1. THE BULL CASE: (Technical breakouts, fundamental tailwinds)
-        2. THE BEAR CASE: (Risk factors, valuation concerns, macro threats)
-        3. SYNTHESIS & CONVICTION: (Final verdict, probability of trend continuation)
+        OUTPUT SECTIONS (DO NOT CUT OFF):
+        1. THE BULL CASE: (Technical/Fundamental)
+        2. THE BEAR CASE: (Risk/Macro)
+        3. SYNTHESIS: (Final verdict & Conviction Score)
         
-        TONE: Institutional, Data-Dense, No Fluff.
+        Constraint: Use markdown headers. Be comprehensive but data-dense.
         """
 
         payload = {
             "contents": [{"parts": [{"text": prompt}]}],
-            "generationConfig": {"temperature": 0.2, "maxOutputTokens": 2048}
+            "generationConfig": {
+                "temperature": 0.2, 
+                "maxOutputTokens": 4096  # Increased to prevent cutoff
+            }
         }
 
         try:
-            response = requests.post(url, json=payload, timeout=25)
+            response = requests.post(url, json=payload, timeout=30)
             response.raise_for_status()
-            res_json = response.json()
-            return res_json['candidates'][0]['content']['parts'][0]['text']
+            return response.json()['candidates'][0]['content']['parts'][0]['text']
         except Exception as e:
-            sanitized_e = self._sanitize_error(e)
-            return f"INTELLIGENCE_LAYER_ERROR: {sanitized_e}"
+            return f"ANALYTICS_FAILED: {self._sanitize_error(e)}"
