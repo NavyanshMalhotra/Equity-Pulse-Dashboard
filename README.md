@@ -25,6 +25,11 @@ EQUITY_TERMINAL is a high-performance, data-dense analytical platform designed f
 *   **Executive Insights**: Powered by **Gemini Flash**, providing 4 high-impact, factual bullet points analyzing sentiment, technical setups, and fundamental risks.
 *   **Contextual News Feed**: Real-time news aggregation from professional financial sources.
 
+### 5. **Pulse Intelligence Layer**
+*   **Whale Conviction Radar**: Quantifies institutional "skin in the game" based on 13F concentration and movement.
+*   **Peer Correlation Radar**: Live mapping of industry supply chains and competitors (e.g., tracking TSM and ASML when analyzing NVDA).
+*   **Synthetic Analyst (Debate Mode)**: Powered by **Gemini Pro**, executing a multi-persona Bull vs. Bear debate to provide balanced, high-rigor investment conviction.
+
 ## 🛠️ Technology Stack
 *   **Frontend**: Streamlit
 *   **Data Aggregation**: yfinance (Yahoo Finance API)
